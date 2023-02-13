@@ -1,0 +1,96 @@
+---
+- name: Install and configure mariadb server on rocky Linux
+  hosts: localhost
+  gather_facts: false
+  become: true
+  vars:
+    mariadb_root_password: 'E7XM8OltUpuc05T5'
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Upgrade packages
+      dnf:
+        name: "*"
+        state: latest
+
+    - name: Ensure required packages are installed
+      dnf:
+        name:
+          - mariadb-server
+          - mariadb-devel
+          - python39
+          - python39-devel
+          - python39-pip
+          - gcc
+        state: latest
+
+    - name: Install Required pip modules
+      pip:
+        name:
+          - PyMySQL
+        state: present
+        executable: pip3
+
+    - name: Ensure mysql service is running
+      systemd:
+        name: mariadb
+        state: started
+        enabled: yes
+
+    - name: Ensure root user can only login from localhost
+      mysql_user:
+        login_password: "{{ mariadb_root_password }}"
+        check_implicit_admin: yes
+        name: root
+        host: "{{ item }}"
+        password: "{{ mariadb_root_password }}"
+        state: present
+      with_items:
+        - localhost
+        - 127.0.0.1
+        - ::1
+
+    - name: Add .my.cnf to user home
+      template:
+        src: templates/my.cnf.j2
+        dest: /root/.my.cnf
+
+    - name: Reload privilege tables
+      command: |
+        mysql -p{{ mariadb_root_password }} -ne "{{ item }}"
+      with_items:
+        - FLUSH PRIVILEGES
+      changed_when: False
+
+    - name: Remove anonymous users
+      command: |
+        mysql -p{{ mariadb_root_password }} -ne "{{ item }}"
+      with_items:
+        - DELETE FROM mysql.user WHERE User=''
+      changed_when: False
+
+    - name: Disallow root login remotely
+      command: |
+        mysql -p{{ mariadb_root_password }} -ne "{{ item }}"
+      with_items:
+        - DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1')
+      changed_when: False
+
+    - name: Remove test database and access to it
+      command: |
+        mysql -p{{ mariadb_root_password }} -ne "{{ item }}"
+      with_items:
+        - DROP DATABASE IF EXISTS test
+        - DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'
+      changed_when: False
+
+    - name: Reload privilege tables
+      command: |
+        mysql -p{{ mariadb_root_password }} -ne "{{ item }}"
+      with_items:
+        - FLUSH PRIVILEGES
+      changed_when: False
+
+    - name: Delete .my.conf
+      file:
+        path: /root/.my.cnf
+        state: absent
