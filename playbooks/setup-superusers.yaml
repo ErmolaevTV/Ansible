@@ -1,0 +1,25 @@
+---
+- name: Create superusers group
+  hosts: all
+  become: yes
+  tasks:
+    - name: Add superusers group
+      group:
+        name: superusers
+        state: present
+
+    - name: Add users to superusers group
+      user:
+        name: "{{ item }}"
+        groups: superusers
+        append: yes
+      loop:
+        - user2
+        - user3
+
+    - name: Grant superusers group superuser privileges
+      lineinfile:
+        dest: /etc/sudoers
+        state: present
+        line: '%superusers ALL=(ALL) NOPASSWD: ALL'
+      validate: '/usr/sbin/visudo -c -f %s'
