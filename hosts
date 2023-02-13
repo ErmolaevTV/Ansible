@@ -44,3 +44,6 @@
 
 [localhost]
 localhost
+
+[remote_ubuntu_host]
+1.8.8.8

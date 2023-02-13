@@ -1,0 +1,27 @@
+  tasks:
+    - name: Install vsftpd
+      package:
+        name: vsftpd
+        state: present
+
+    - name: Copy vsftpd configuration file
+      copy:
+        src: vsftpd.conf
+        dest: /etc/vsftpd.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Create FTP home directory
+      file:
+        path: /srv/ftp
+        state: directory
+        owner: ftp
+        group: ftp
+        mode: 0750
+
+    - name: Start vsftpd service
+      service:
+        name: vsftpd
+        state: started
+        enabled: yes
