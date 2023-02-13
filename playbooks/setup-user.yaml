@@ -1,0 +1,41 @@
+---
+- name: Create user and set SSH key
+  hosts: remote_system
+  become: yes
+  vars_files:
+    - vault.yml
+
+  tasks:
+    - name: Generate SSH key
+      shell: ssh-keygen -t rsa -b 4096 -f /tmp/id_rsa -N ""
+
+    - name: Encrypt SSH key
+      shell: ansible-vault encrypt /tmp/id_rsa.pub --vault-password-file vault.yml
+
+    - name: Create user
+      user:
+        name: user1
+        shell: /bin/bash
+        groups: sudo
+        createhome: yes
+
+    - name: Create .ssh directory
+      file:
+        path: /home/user1/.ssh
+        state: directory
+        owner: user1
+        group: user1
+        mode: 0700
+
+    - name: Copy encrypted SSH key to remote system
+      copy:
+        src: /tmp/id_rsa.pub.ansible-vault
+        dest: /home/user1/.ssh/authorized_keys
+        owner: user1
+        group: user1
+        mode: 0600
+
+    - name: Remove encrypted SSH key from local system
+      file:
+        path: /tmp/id_rsa.pub.ansible-vault
+        state: absent

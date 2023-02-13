@@ -1,0 +1,20 @@
+---
+- name: Install/Uninstall Postfix
+  hosts: localhost
+  become: yes
+  gather_facts: yes
+  tags:
+    - init
+    - drop
+  tasks:
+  - name: Install Postfix
+    apt:
+      name: postfix
+      state: present
+    when: "'init' in tag_names"
+
+  - name: Uninstall Postfix
+    apt:
+      name: postfix
+      state: absent
+    when: "'drop' in tag_names"
